@@ -1,0 +1,81 @@
+# pip install pomogranate
+
+from pomogranate import State, HiddenMarkovModel, DiscreateDistribution
+
+model= HiddenMarkovModel(name="modelName")
+
+# It set probility of taking umbrella in sunny weather
+sunny_emissions=DiscreateDistribution({"yes":0.2,"no":0.8})
+sunny_state=State(sunny_emissions, name="sunny")
+
+# It set probility of taking umbrella in rainy weather
+rainy_emissions=DiscreateDistribution({"yes":0.9,"no":0.1})
+rainy_state=State(rainy_emissions, name="rainy")
+
+# It set probility of taking umbrella in sunny weather
+hot_emissions=DiscreateDistribution({"yes":0.6,"no":0.4})
+hot_state=State(hot_emissions, name="hot")
+
+# Adding initial values of states
+model.add_States(sunny_state,rainy_state,hot_state)
+
+# Adding probility of upcoming event(weather)
+model.add_transition(model.start,sunny_state, 0.5)
+model.add_transition(model.start,rainy_state, 0.2)
+model.add_transition(model.start,  hot_state, 0.3)
+
+(This means, their is high probility of changing weather from none to sunny, suppose this is morning)
+
+model.add_transition(sunny_state,sunny_state,0.2)
+model.add_transition(sunny_state,rainy_state,0.3)
+model.add_transition(sunny_state,  hot_state,0.5)
+
+
+model.add_transition(hot_state,sunny_state,0.4)
+model.add_transition(hot_state,rainy_state,0.4)
+model.add_transition(hot_state,  hot_state,0.2)
+
+
+model.add_transition(rainy_state,sunny_state,0.6)
+model.add_transition(rainy_state,rainy_state,0.3)
+model.add_transition(rainy_state,  hot_state,0.1)
+
+model.bake()
+
+# Now, we should check for sequence of states,
+print(model.states)
+
+# If states are not in sequence then, 
+column_order = ["ModelName-start", "Sunny", "hot", "Rainy", " ModelName-end"]
+
+column_names = [s.name for s in model.states]
+order_index = [column_names.index(c) for c in column_order]
+
+transitions = model.dense_transition_matrix()[:, order_index][order_index, :]
+
+print(transitions)
+
+[[ 0.   0.5  0.2  0.3	0. ]
+ [ 0.   0.2  0.5  0.3	0. ]
+ [ 0.   0.4  0.2  0.4	0. ]
+ [ 0.   0.6  0.1  0.3	0. ]]
+
+
+#input
+x=["yes", "no", "no", "no","yes","yes"]
+
+
+# Now, train a model, it is not exactly training
+forward_matrix=np.exp(model.forward(x))
+prob_percentage=np.exp(model.log_probability(x))
+
+
+# print all pribilities
+print("         " + "".join(s.name.center(len(s.name)+6) for s in model.states))
+for i in range(len(observations) + 1):
+    print(" <start> " if i==0 else observations[i -1].center(9), end="")
+print("".join("{:.0f}%".format(100 * forward_matrix[i,j]).center(len(s.name) + 6) for j, s in enumerate(model.states)))
+
+
+# Another method for training,
+viterbi_likelihood, viterbi_path = model.viterbi(x)
